@@ -33,4 +33,4 @@ sample_images/
 uploads/
 
 # Streamlit
-.streamlit/secrets.toml
+.streamlit

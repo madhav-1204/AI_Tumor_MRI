@@ -1,281 +1,107 @@
-# 🧠 AI Brain Tumor Classification System
+# NeuroVision AI - Agentic Brain Tumor Analysis System
 
-An explainable, agentic AI system for brain tumor classification using deep learning and large language models.
+**NeuroVision AI** is an advanced, agentic AI system designed to assist neuroradiologists in classifying brain tumors from MRI scans. It leverages a multi-agent architecture to perceive, reason, and report findings with clinical precision.
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
-![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B.svg)
+## 🧠 Key Features
 
-## ⚠️ IMPORTANT DISCLAIMER
+*   **Multi-Agent Architecture**:
+    *   **Vision Agent**: Deep learning (ResNet/EfficientNet) for tumor classification (Glioma, Meningioma, Pituitary, No Tumor).
+    *   **Explainability Agent**: Generates Grad-CAM heatmaps to visualize the model's focus.
+    *   **Reasoning Agent**: Uses **Google Gemini 1.5 Flash** to provide detailed clinical interpretation and morphological analysis.
+    *   **Orchestrator**: Coordinates agents and manages complex workflows (Single vs. Multi-View).
+*   **Conflict Detection**: Automatically detects diagnostic inconsistencies across multiple views of the same patient and suppresses AI interpretation to ensure safety.
+*   **Professional Reporting**: Auto-generates comprehensive, clinically formatted PDF reports with embedded images and analysis key findings.
+*   **Privacy-First Design**: Local processing for visuals; streamlined UI with no unnecessary technical jargon.
 
-**This is a demonstration project for educational purposes only. NOT for medical use.**
+---
 
-This AI system is not FDA-approved and should never be used for actual medical diagnosis. Always consult qualified healthcare professionals for medical advice.
+## 🛠️ Installation & Setup
 
-## 🎯 Features
+You can set up NeuroVision AI using either **Conda** or standard **Python (venv)**. Ensure you have **Python 3.11** installed.
 
-- **Multi-Agent Architecture**: Orchestrated system with specialized agents
-  - 👁️ **Vision Agent**: EfficientNet-B0 based classifier
-  - 🎨 **Explainability Agent**: Grad-CAM visualization
-  - 🧠 **Reasoning Agent**: LLM-powered explanations  
-  - 📄 **Report Agent**: Structured diagnostic reports
+### Option A: Using Conda (Recommended)
 
-- **4-Class Classification**:
-  - Glioma
-  - Meningioma
-  - Pituitary Tumor
-  - No Tumor
+1.  **Create the environment**:
+    ```bash
+    conda create -n ai_tumor python=3.11
+    ```
+2.  **Activate the environment**:
+    ```bash
+    conda activate ai_tumor
+    ```
+3.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-- **Explainable AI**: Grad-CAM heatmaps showing decision factors
-- **Interactive Web Interface**: Built with Streamlit
-- **Professional Reports**: Clinical-style diagnostic reports
-- **📄 PDF Export**: Generate comprehensive PDF reports with images and analysis
-- **📊 Detailed Technical Reports**: In-depth statistical analysis, uncertainty metrics, and clinical context
-- **🔬 Advanced Analytics**: Shannon entropy, confidence intervals, and probability distributions
+### Option B: Using Python venv (Standard)
 
-## 🚀 Quick Start
+1.  **Create a virtual environment**:
+    ```bash
+    # Windows
+    python -m venv venv
+    
+    # macOS/Linux
+    python3 -m venv venv
+    ```
+2.  **Activate the environment**:
+    ```bash
+    # Windows
+    .\venv\Scripts\activate
+    
+    # macOS/Linux
+    source venv/bin/activate
+    ```
+3.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-### Prerequisites
+---
 
-- Python 3.11+ (recommended) or 3.10+
-- Anaconda/Miniconda (recommended) OR Python standalone
-- 4GB+ RAM
-- Internet connection (for model download)
+## ⚙️ Configuration
 
-### Installation
+1.  **Gemini API Key**: This system requires a Google Gemini API key for the Reasoning Agent.
+    *   Create a file named `.env` in the root directory.
+    *   Add your key:
+        ```env
+        GEMINI_API_KEY=your_actual_api_key_here
+        ```
 
-#### Step 1: Clone the Repository
+2.  **Streamlit Config**:
+    *   A `.streamlit/config.toml` file is included to ensure compatibility with PyTorch. Do not remove it.
 
-```bash
-git clone https://github.com/spargy4050v/AI_Tumor.git
-cd AI_Tumor
-```
+---
 
-#### Step 2: Create Virtual Environment
+## 🚀 Running the Application
 
-**Option A: Using Conda (Recommended):**
-```bash
-# Create environment with Python 3.11
-conda create -n ai_tumor_311 python=3.11 -y
-
-# Activate environment
-conda activate ai_tumor_311
-```
-
-**Option B: Using Python venv:**
-```bash
-# Create virtual environment with Python 3.11
-# Windows (if you have Python 3.11 installed):
-py -3.11 -m venv venv
-
-# Linux/Mac (if you have Python 3.11 installed):
-python3.11 -m venv venv
-
-# Or use default Python (make sure it's 3.11+):
-python -m venv venv
-
-# Activate environment
-# Windows:
-venv\Scripts\activate
-
-# Linux/Mac:
-source venv/bin/activate
-```
-
-#### Step 3: Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-**Note:** Installation downloads ~150MB of packages including PyTorch, Streamlit, and ML libraries. This may take 2-5 minutes depending on your internet speed.
-
-This will install:
-- PyTorch & torchvision
-- timm (PyTorch Image Models)
-- Streamlit
-- grad-cam (Gradient-weighted Class Activation Mapping)
-- google-generativeai (optional, for LLM explanations)
-- matplotlib, opencv-python, pillow, numpy, pandas
-
-#### Step 4: (Optional) Set Up Gemini API
-
-For enhanced LLM-generated explanations:
-
-1. Get a free API key: https://makersuite.google.com/app/apikey
-2. Create a `.env` file:
-```bash
-cp .env.example .env
-```
-3. Edit `.env` and add your key:
-```
-GEMINI_API_KEY=your_actual_api_key_here
-```
-
-**Note**: The system works without an API key using fallback explanations.
-
-### Running the Application
-
-#### Web Interface (Recommended)
+To start the web interface, run:
 
 ```bash
 streamlit run app.py
 ```
 
-The app will open in your browser at `http://localhost:8501`
-
-#### Command Line Testing
-
-```python
-from agents.orchestrator import Orchestrator
-
-# Initialize
-orchestrator = Orchestrator()
-orchestrator.load_model()
-
-# Process image
-results = orchestrator.process_image('path/to/mri_image.jpg')
-
-# View results
-print(results['report'])
-```
-
-## 📁 Project Structure
-
-```
-AI_Tumor/
-├── agents/
-│   ├── __init__.py
-│   ├── vision_agent.py          # Image classification
-│   ├── explainability_agent.py  # Grad-CAM visualization
-│   ├── reasoning_agent.py       # LLM explanations
-│   ├── report_agent.py          # Report generation
-│   └── orchestrator.py          # Agent coordination
-├── app.py                       # Streamlit web interface
-├── config.py                    # Configuration settings
-├── requirements.txt             # Python dependencies
-├── .env.example                 # Environment variables template
-└── README.md
-```
-
-## 🔬 How It Works
-
-### Agent-Based Architecture
-
-```
-User Input (MRI Image)
-         ↓
-   [Orchestrator]
-         ↓
-    ┌────┴────┬──────────┬───────────┐
-    ↓         ↓          ↓           ↓
-[Vision] [Explain] [Reasoning] [Report]
-    ↓         ↓          ↓           ↓
-    └────┬────┴──────────┴───────────┘
-         ↓
-   Final Results
-```
-
-1. **Vision Agent**: Runs EfficientNet-B0 inference
-2. **Explainability Agent**: Generates Grad-CAM heatmaps
-3. **Reasoning Agent**: Creates human-readable explanations
-4. **Report Agent**: Compiles structured diagnostic report
-5. **Orchestrator**: Coordinates all agents
-
-## 📊 Usage
-
-### Web Interface
-
-1. Launch: `streamlit run app.py`
-2. Click "Initialize System"
-3. Upload MRI image (JPG/PNG)
-4. Click "Analyze Image"
-5. View results, heatmaps, and reports
-
-#### New Features:
-
-**📄 PDF Export**
-- Click "Export PDF Report" button after analysis
-- Downloads comprehensive PDF with:
-  - Classification results and confidence scores
-  - Original MRI scan and Grad-CAM heatmap
-  - Probability distribution tables
-  - AI-generated interpretation
-  - Medical disclaimer
-
-**📊 Detailed Technical Report**
-- Click "View Detailed Report" to expand comprehensive analysis
-- Includes:
-  - **Technical Analysis**: Model architecture, parameters, preprocessing details
-  - **Statistical Analysis**: Entropy, uncertainty metrics, confidence intervals
-  - **AI Reasoning**: Clinical context and key findings with confidence indicators
-  - **Medical Context**: Detailed information about each classification category
-  - **Full Report**: Complete technical report in text format
-
-**Key Metrics Explained:**
-- **Confidence**: Probability of predicted class (%)
-- **Uncertainty**: Shannon entropy-based prediction uncertainty
-- **Entropy**: Information theory measure of prediction spread
-- **Confidence Intervals**: Estimated margin of error (±5% baseline)
-
-### Python API
-
-```python
-from agents.orchestrator import Orchestrator
-
-orchestrator = Orchestrator(gemini_api_key="optional_key")
-orchestrator.load_model()
-
-results = orchestrator.process_image('brain_mri.jpg')
-
-print(f"Prediction: {results['prediction']['predicted_class']}")
-print(f"Confidence: {results['prediction']['confidence']:.2f}%")
-```
-
-## 🧪 Testing
-
-```bash
-# Test vision agent
-python agents/vision_agent.py
-
-# Test orchestrator
-python agents/orchestrator.py
-```
-
-## 🚢 Deployment
-
-### Streamlit Cloud
-1. Push to GitHub
-2. Go to [share.streamlit.io](https://share.streamlit.io)
-3. Connect repository and deploy
-
-### Hugging Face Spaces
-1. Create Space with Streamlit SDK
-2. Push code
-3. Deploy
-
-## 🛠️ Troubleshooting
-
-**Model Download Issues**: Check internet connection, model downloads once (~20MB)
-
-**Memory Errors**: Close other apps, system uses CPU automatically
-
-**Grad-CAM Not Showing**: Ensure `grad-cam` package installed
-
-**API Key Issues**: System works without key in fallback mode
-
-## ⚖️ Legal Disclaimer
-
-This software is provided "as is" for educational purposes only.
-
-**NOT FOR CLINICAL USE.**
-
-- Not validated for medical diagnosis
-- Not FDA approved
-- No warranty or guarantee
-- Developers assume no liability
-- Always consult medical professionals
+The application will open in your default browser at `http://localhost:8501`.
 
 ---
 
-**Built for AI Hackathon 2025** | GitHub: [@spargy4050v](https://github.com/spargy4050v)
+## 📂 Project Structure
+
+```
+AI_Tumor/
+├── agents/             # Core AI Agents
+│   ├── vision_agent.py
+│   ├── reasoning_agent.py
+│   ├── report_agent.py
+│   └── orchestrator.py
+├── utils/              # Utilities (PDF Generation)
+├── models/             # PyTorch Model weights
+├── .streamlit/         # Streamlit Configuration
+├── app.py              # Main Streamlit Interface
+├── requirements.txt    # Project Dependencies
+└── README.md           # Documentation
+```
+
+## ⚠️ Medical Disclaimer
+
+This tool is for **research and educational purposes only**. It is not a certified medical device and should not be used for primary diagnosis. All findings must be verified by a qualified radiologist.
