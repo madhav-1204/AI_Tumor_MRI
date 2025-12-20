@@ -107,17 +107,6 @@ Keep it simple and easy to understand for non-medical users. Include the medical
         else:
             conf_text = "The model has low confidence - further analysis recommended."
         
-        explanation = f"""
-**AI Classification Result:**
-
-The system predicts: **{predicted_class.upper()}**
-Confidence: {confidence:.1f}%
-
-{desc}
-
-{conf_text}
-
-**Important:** This is an AI-generated prediction for educational purposes only. It should NOT be used for medical diagnosis. Always consult qualified healthcare professionals for proper medical evaluation.
-"""
+        explanation = f"{desc} {conf_text}"
         
         return explanation

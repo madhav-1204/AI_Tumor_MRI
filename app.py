@@ -14,6 +14,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from agents.orchestrator import Orchestrator
 from config import MEDICAL_DISCLAIMER, CLASS_NAMES
+from datetime import datetime
+from utils.pdf_generator import MedicalPDFGenerator
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Page configuration
 st.set_page_config(
@@ -53,9 +59,11 @@ if 'orchestrator' not in st.session_state:
 if 'results' not in st.session_state:
     st.session_state.results = None
 
-def initialize_system(api_key=None):
+def initialize_system():
     """Initialize the orchestrator"""
     with st.spinner("🔄 Loading AI models..."):
+        # Load API key from environment
+        api_key = os.getenv('GEMINI_API_KEY')
         orchestrator = Orchestrator(gemini_api_key=api_key)
         orchestrator.load_model()
         st.session_state.orchestrator = orchestrator
@@ -95,18 +103,9 @@ def main():
     with st.sidebar:
         st.header("⚙️ Settings")
         
-        # API Key input
-        with st.expander("🔑 Gemini API Key (Optional)", expanded=False):
-            api_key = st.text_input(
-                "Enter your Google Gemini API key for enhanced explanations:",
-                type="password",
-                help="Optional: Provides LLM-generated explanations. Leave blank for fallback explanations."
-            )
-            st.caption("[Get a free API key](https://makersuite.google.com/app/apikey)")
-        
         # Initialize button
         if st.button("🚀 Initialize System", type="primary", use_container_width=True):
-            initialize_system(api_key if api_key else None)
+            initialize_system()
         
         st.divider()
         
@@ -136,113 +135,175 @@ def main():
         st.info("👈 Please click 'Initialize System' in the sidebar to start")
         return
     
+    
+    # Analysis Mode Selector
+    st.header("⚙️ Analysis Settings")
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        analysis_mode = st.radio(
+            "Select Analysis Mode:",
+            ["👥 Multiple Patients (Batch Analysis)", "👤 Single Patient (Multi-View Analysis)"],
+            help="Choose how to interpret the uploaded images."
+        )
+        
+    mode_key = 'single_patient' if "Single Patient" in analysis_mode else 'batch'
+    patient_id = None
+    
+    if mode_key == 'single_patient':
+        with col2:
+            patient_id = st.text_input("Patient ID / Name (Optional)", placeholder="e.g., John Doe")
+
+    st.divider()
+
     # File uploader
-    st.header("📤 Upload Brain MRI Image")
-    uploaded_file = st.file_uploader(
-        "Choose an MRI image (JPG, JPEG, PNG)",
+    st.header("📤 Upload Brain MRI Image(s)")
+    uploaded_files = st.file_uploader(
+        "Choose MRI image(s) (JPG, JPEG, PNG)",
         type=['jpg', 'jpeg', 'png'],
-        help="Upload a brain MRI scan for classification"
+        accept_multiple_files=True,
+        help="Upload one or more brain MRI scans for classification"
     )
     
-    if uploaded_file is not None:
-        # Save uploaded file temporarily
-        temp_path = f"temp_{uploaded_file.name}"
-        with open(temp_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        
-        # Display uploaded image
-        col1, col2 = st.columns([1, 1])
-        
-        with col1:
-            st.subheader("📷 Uploaded Image")
-            image = Image.open(temp_path)
-            st.image(image, use_container_width=True)
+    if uploaded_files:
+        # Display uploaded images count
+        st.success(f"✅ {len(uploaded_files)} images uploaded")
         
         # Process button
-        if st.button("🔬 Analyze Image", type="primary", use_container_width=True):
-            with st.spinner("🔄 Processing image through AI pipeline..."):
+        if st.button("🔬 Analyze Batch", type="primary", use_container_width=True):
+            
+            all_results = []
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            # Process each image
+            for idx, uploaded_file in enumerate(uploaded_files):
+                status_text.text(f"Processing image {idx+1}/{len(uploaded_files)}: {uploaded_file.name}...")
+                
+                # Save uploaded file temporarily
+                temp_path = f"temp_{uploaded_file.name}"
+                with open(temp_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                
                 try:
+                    # Process image
                     results = st.session_state.orchestrator.process_image(
                         temp_path,
                         generate_gradcam=generate_gradcam
                     )
-                    st.session_state.results = results
+                    results['filename'] = uploaded_file.name
+                    all_results.append(results)
+                    
                 except Exception as e:
-                    st.error(f"❌ Error during processing: {e}")
-                    return
-        
-        # Display results
-        if st.session_state.results:
-            results = st.session_state.results
-            pred = results['prediction']
-            
-            st.success("✅ Analysis Complete!")
-            st.divider()
-            
-            # Results section
-            st.header("📊 Classification Results")
-            
-            # Prediction box
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Predicted Class", pred['predicted_class'].upper())
-            with col2:
-                st.metric("Confidence", f"{pred['confidence']:.2f}%")
-            with col3:
-                status = "🟢 High" if pred['confidence'] > 70 else "🟡 Medium" if pred['confidence'] > 50 else "🔴 Low"
-                st.metric("Status", status)
-            
-            # Probability chart
-            st.subheader("📈 Probability Distribution")
-            fig = create_probability_chart(
-                pred['probabilities'],
-                pred['class_names'],
-                pred['predicted_idx']
-            )
-            st.pyplot(fig)
-            
-            # Grad-CAM visualization
-            if results['gradcam'] and generate_gradcam:
-                st.divider()
-                st.header("🎨 Explainability: Grad-CAM Visualization")
-                st.caption("Highlighted regions show what the AI focused on to make its prediction")
+                    st.error(f"❌ Error processing {uploaded_file.name}: {e}")
+                finally:
+                    # Clean up temp file
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.subheader("Original Image")
-                    st.image(pred['original_image'], use_container_width=True)
-                with col2:
-                    st.subheader("Grad-CAM Heatmap")
-                    st.image(results['gradcam']['overlay'], use_container_width=True)
+                # Update progress
+                progress_bar.progress((idx + 1) / len(uploaded_files))
             
-            # Explanation
-            st.divider()
-            st.header("🧠 AI Explanation")
-            st.markdown(results['explanation'])
-            
-            # Full report
-            if show_report:
-                st.divider()
-                st.header("📄 Detailed Report")
-                with st.expander("View Full Diagnostic Report", expanded=False):
-                    st.code(results['report'], language=None)
-            
-            # Download button
-            st.divider()
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    label="📥 Download Report",
-                    data=results['report'],
-                    file_name=f"tumor_report_{uploaded_file.name}.txt",
-                    mime="text/plain"
-                )
+            # Save results to session state
+            st.session_state.results = all_results
+            st.session_state.analysis_metadata = {'mode': mode_key, 'patient_id': patient_id}
+            status_text.empty()
+            st.success("✅ Batch Analysis Complete!")
         
-        # Clean up
-        try:
-            os.remove(temp_path)
-        except:
-            pass
+        # Display results if available
+        if st.session_state.results:
+            results_list = st.session_state.results
+            metadata = st.session_state.get('analysis_metadata', {'mode': 'batch', 'patient_id': None})
+            
+            st.divider()
+            st.header("📊 Batch Results Summary")
+            
+            # Generate consolidated report
+            batch_report = st.session_state.orchestrator.generate_batch_report(
+                results_list, 
+                mode=metadata['mode'], 
+                patient_id=metadata['patient_id']
+            )
+            
+            
+            # Download PDF Report
+            pdf_path = f"temp_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            try:
+                pdf_gen = MedicalPDFGenerator()
+                pdf_gen.generate_batch_pdf(
+                    results_list, 
+                    pdf_path, 
+                    mode=metadata['mode'], 
+                    patient_id=metadata.get('patient_id')
+                )
+                
+                with open(pdf_path, "rb") as pdf_file:
+                    st.download_button(
+                        label="📄 Download PDF Report",
+                        data=pdf_file,
+                        file_name=f"medical_report_{metadata['mode']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                
+                # Clean up
+                try:
+                    os.remove(pdf_path)
+                except:
+                    pass
+            except Exception as e:
+                st.error(f"PDF generation failed: {e}")
+            
+            st.divider()
+            
+            # Display full report text
+            st.subheader("📄 Full Report")
+            with st.expander("View Complete Report", expanded=True):
+                st.text(batch_report)
+            
+            st.divider()
+            st.subheader("Results by Image")
+            
+            # Display individual results
+            for idx, res in enumerate(results_list):
+                with st.expander(f"Image {idx+1}: {res['filename']} - {res['prediction']['predicted_class'].upper()} ({res['prediction']['confidence']:.1f}%)", expanded=False):
+                    
+                    pred = res['prediction']
+                    
+                    # Layout: Image | GradCAM | Stats
+                    c1, c2, c3 = st.columns([1, 1, 1])
+                    
+                    with c1:
+                        st.caption("Original Image")
+                        st.image(pred['original_image'], use_container_width=True)
+                    
+                    with c2:
+                        if res.get('gradcam') and generate_gradcam:
+                            st.caption("Grad-CAM Explanation")
+                            st.image(res['gradcam']['overlay'], use_container_width=True)
+                        elif res.get('gradcam_error'):
+                            st.error(f"Grad-CAM Failed: {res['gradcam_error']}")
+                        else:
+                            st.info("Grad-CAM disabled or not generated")
+                            
+                    with c3:
+                        st.caption("Prediction Details")
+                        st.metric("Class", pred['predicted_class'].upper())
+                        st.metric("Confidence", f"{pred['confidence']:.2f}%")
+                        
+                        # Show probability chart
+                        fig = create_probability_chart(
+                            pred['probabilities'],
+                            pred['class_names'],
+                            pred['predicted_idx']
+                        )
+                        st.pyplot(fig)
+                    
+                    # Explanation text
+                    st.markdown("---")
+                    st.markdown(f"**AI Explanation:** {res['explanation']}")
     
     # Footer
     st.divider()

@@ -55,12 +55,12 @@ class ExplainabilityAgent:
             target_layers = self._get_target_layer()
             
             # Create Grad-CAM object
-            cam = GradCAM(model=self.model, target_layers=target_layers)
-            
-            # Generate CAM
-            targets = [ClassifierOutputTarget(predicted_idx)]
-            grayscale_cam = cam(input_tensor=image_tensor, targets=targets)
-            grayscale_cam = grayscale_cam[0, :]  # Get first image from batch
+            # Use 'with' context manager to ensure hooks are removed
+            with GradCAM(model=self.model, target_layers=target_layers) as cam:
+                # Generate CAM
+                targets = [ClassifierOutputTarget(predicted_idx)]
+                grayscale_cam = cam(input_tensor=image_tensor, targets=targets)
+                grayscale_cam = grayscale_cam[0, :]  # Get first image from batch
             
             return grayscale_cam
             

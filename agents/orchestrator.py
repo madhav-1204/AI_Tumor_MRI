@@ -64,6 +64,7 @@ class Orchestrator:
         
         # Step 2: Explainability Agent - Grad-CAM
         gradcam_results = None
+        gradcam_error = None
         if generate_gradcam and self.explainability_agent:
             print("\n🎨 Step 2: Generating Grad-CAM visualization...")
             try:
@@ -75,6 +76,7 @@ class Orchestrator:
                 print("   ✅ Grad-CAM generated")
             except Exception as e:
                 print(f"   ⚠️  Grad-CAM failed: {e}")
+                gradcam_error = str(e)
         
         # Step 3: Reasoning Agent - Explanation
         print("\n🧠 Step 3: Generating explanation...")
@@ -99,10 +101,15 @@ class Orchestrator:
         return {
             'prediction': prediction_results,
             'gradcam': gradcam_results,
+            'gradcam_error': gradcam_error,
             'explanation': explanation,
             'report': report,
             'summary': summary
         }
+    
+    def generate_batch_report(self, results_list, mode='batch', patient_id=None):
+        """Delegate batch report generation to report agent"""
+        return self.report_agent.generate_batch_report(results_list, mode=mode, patient_id=patient_id)
 
 
 # Test function
