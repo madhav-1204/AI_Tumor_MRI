@@ -27,10 +27,9 @@ class ExplainabilityAgent:
         
     def _get_target_layer(self):
         """Get the target layer for Grad-CAM"""
-        # For EfficientNet-B0, use the final convolutional layer
+        # For ResNet-18, use the final convolutional layer (layer4)
         try:
-            # timm EfficientNet structure
-            target_layer = self.model.conv_head
+            target_layer = self.model.layer4[-1]
             return [target_layer]
         except:
             # Fallback: try to find last conv layer
