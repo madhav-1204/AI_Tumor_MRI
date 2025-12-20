@@ -61,7 +61,14 @@ conda activate ai_tumor_311
 
 **Option B: Using Python venv:**
 ```bash
-# Create virtual environment
+# Create virtual environment with Python 3.11
+# Windows (if you have Python 3.11 installed):
+py -3.11 -m venv venv
+
+# Linux/Mac (if you have Python 3.11 installed):
+python3.11 -m venv venv
+
+# Or use default Python (make sure it's 3.11+):
 python -m venv venv
 
 # Activate environment
