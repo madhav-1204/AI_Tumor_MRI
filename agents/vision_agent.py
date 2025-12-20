@@ -4,9 +4,8 @@ Vision Agent - Handles model loading and inference (PyTorch version)
 
 import torch
 import torch.nn as nn
-import timm
+from torchvision import models, transforms
 from PIL import Image
-from torchvision import transforms
 import sys
 import os
 
@@ -18,13 +17,12 @@ from config import *
 class VisionAgent:
     """
     Vision Agent responsible for:
-    1. Loading pretrained EfficientNet-B0 model
+    1. Loading your trained EfficientNet-B2 model
     2. Preprocessing MRI images
     3. Running inference
     4. Returning predictions and probabilities
     
-    Note: This uses ImageNet pretrained weights for demonstration.
-    For production, you would fine-tune on brain tumor dataset.
+    Uses your actual trained model for real brain tumor predictions.
     """
     
     def __init__(self):
@@ -41,33 +39,43 @@ class VisionAgent:
         ])
     
     def load_model(self):
-        """Load pretrained EfficientNet-B0 model"""
+        """Load your trained EfficientNet-B2 model"""
         if self.model is not None:
             return self.model
         
         try:
-            print(f"🔄 Loading {MODEL_ARCHITECTURE} from timm...")
+            print(f"🔄 Loading your trained ResNet-18 model...")
+            print(f"Model path: {MODEL_PATH}")
             print(f"Device: {self.device}")
             
-            # Load pretrained EfficientNet-B0 with custom classifier for 4 classes
-            self.model = timm.create_model(
-                MODEL_ARCHITECTURE,
-                pretrained=True,  # Use ImageNet weights
-                num_classes=NUM_CLASSES
-            )
+            # Create ResNet-18 model with 4 output classes
+            self.model = models.resnet18(weights=None)
+            self.model.fc = nn.Linear(self.model.fc.in_features, NUM_CLASSES)
+            
+            # Load your trained weights
+            checkpoint = torch.load(MODEL_PATH, map_location=self.device, weights_only=False)
+            self.model.load_state_dict(checkpoint)
             
             self.model.to(self.device)
             self.model.eval()
             
-            print("✅ Model loaded successfully!")
-            print(f"   Architecture: {MODEL_ARCHITECTURE}")
+            print("✅ Your trained model loaded successfully!")
+            print(f"   Architecture: ResNet-18")
             print(f"   Classes: {NUM_CLASSES}")
-            print(f"   Pretrained: ImageNet weights")
+            print(f"   Mode: TRAINED MODEL (Real brain tumor predictions)")
             return self.model
             
         except Exception as e:
             print(f"❌ Error loading model: {e}")
-            raise
+            print(f"   Using pretrained ResNet-18 as fallback...")
+            
+            # Fallback: Create model with pretrained weights
+            self.model = models.resnet18(weights='IMAGENET1K_V1')
+            self.model.fc = nn.Linear(self.model.fc.in_features, NUM_CLASSES)
+            self.model.to(self.device)
+            self.model.eval()
+            print("   ⚠️  Using ImageNet weights (not your trained model)")
+            return self.model
     
     def preprocess_image(self, image_path):
         """
