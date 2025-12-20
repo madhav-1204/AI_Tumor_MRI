@@ -674,21 +674,15 @@ def show_landing_page():
     """Display modern landing page"""
     # Navigation
     st.markdown("""
-    <div class="nav-bar">
+    <div class="main-header">
         <div class="logo-container">
             <div class="logo-icon">🧠</div>
             <div class="logo-text">NEURO<span class="logo-vision">VISION</span> AI</div>
         </div>
-        <div class="nav-links">
-            <span class="nav-link">Technology</span>
-            <span class="nav-link">Compliance</span>
-            <span class="nav-link">Case Studies</span>
+        <div class="status-bar">
+            <!-- Clean Header -->
         </div>
     </div>
-    """, unsafe_allow_html=True)
-    
-    # Hero Section
-    st.markdown("""
     <div class="hero-section">
         <div class="hero-badge">
             NEXT-GEN NEURO-DIAGNOSTIC ENGINE
@@ -760,10 +754,7 @@ def show_dashboard():
             <div class="logo-text">NEURO<span class="logo-vision">VISION</span> AI</div>
         </div>
         <div class="nav-links">
-            <div class="encrypted-badge">
-                <span class="status-dot" style="background: var(--success-green);"></span>
-                ENCRYPTED SESSION
-            </div>
+            <!-- Clean Header -->
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -785,41 +776,50 @@ def show_dashboard():
     col1, col2 = st.columns([1.2, 2], gap="large")
     
     with col1:
-        # Analysis Settings Section
+        # Study Configuration Section
         st.markdown("""
         <div style="background: var(--card-bg); border: 1px solid var(--border-color); 
                     border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;
                     backdrop-filter: blur(10px);">
             <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <div style="font-size: 1.5rem;">⚙️</div>
-                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700;">Analysis Settings</h3>
+                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700;">Study Configuration</h3>
             </div>
         </div>
         """, unsafe_allow_html=True)
         
         # Analysis Mode Selection
-        st.markdown("**Select Analysis Mode:**")
+        st.markdown("**Select Workflow:**")
         analysis_mode = st.radio(
             "Analysis Mode",
             options=["multi_view", "batch"],
             format_func=lambda x: {
-                "batch": "👥 Multiple Patients (Batch Analysis)",
-                "multi_view": "👤 Single Patient (Multi-View Analysis)"
+                "batch": "👥 Multiple Patients (Batch Processing)",
+                "multi_view": "👤 Single Patient (Comprehensive Review)"
             }[x],
             key="analysis_mode_selector",
             label_visibility="collapsed",
             index=0
         )
         
-        # Patient ID/Name field for multi-view mode
+        # Patient ID/Name field - Only for Single Patient Mode
         patient_id = None
-        if analysis_mode in ["multi_view", "batch"]:
-            st.markdown("**Patient ID / Name (Optional):**")
+        if analysis_mode == "multi_view":
+            st.markdown("**Patient Identification:**")
+            
+            # Auto-generate a professional Medical Record Number (MRN)
+            if 'auto_id' not in st.session_state:
+                import random
+                # Format: MRN followed by 8 digits (common hospital standard)
+                st.session_state.auto_id = f"MRN-{random.randint(10000000, 99999999)}"
+                
             patient_id = st.text_input(
-                "Patient ID",
-                placeholder="e.g., John Doe",
+                "Patient Name / Record Number",
+                value=st.session_state.auto_id,
+                placeholder="Enter Patient Name or MRN",
                 key="patient_id_input",
-                label_visibility="collapsed"
+                label_visibility="collapsed",
+                help="Enter Patient Name or keep the auto-generated MRN"
             )
         
         st.markdown("<br>", unsafe_allow_html=True)
@@ -958,26 +958,6 @@ def show_dashboard():
             st.markdown("<br><br>", unsafe_allow_html=True)
             show_batch_results()
     
-    # Footer Status
-    st.markdown("""
-    <div class="status-footer">
-        <div class="status-item">
-            <span style="color: var(--success-green);">🔒</span>
-            AES-256 COMPLIANT
-        </div>
-        <div class="status-item">
-            BUILD V4.1.0-STABLE
-        </div>
-        <div class="status-item status-active">
-            <span class="status-dot"></span>
-            NEURAL ENGINE ACTIVE
-        </div>
-        <div class="status-item status-active">
-            <span class="status-dot"></span>
-            CLUSTER: ONLINE
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
 def analyze_single_image_simple(uploaded_file, patient_id=None):
     """Process single uploaded image (simplified for multi-view single case)"""
@@ -1202,39 +1182,41 @@ def show_batch_results():
     
     # Batch Header
     mode_text = {
-        'batch': 'Multiple Patients (Batch Analysis)',
-        'multi_view': 'Single Patient (Multi-View Analysis)'
+        'batch': 'Multiple Patients (Batch Processing)',
+        'multi_view': 'Single Patient (Comprehensive Review)'
     }[mode]
     
     st.markdown(f"### 📋 {mode_text}")
     if patient_id:
-        st.caption(f"Patient ID: {patient_id}")
+        st.caption(f"Patient Name / ID: {patient_id}")
     st.caption(f"Total Scans Analyzed: {len(results_list)}")
     
-    # Summary Statistics
+    # Summary Statistics & Conflict Detection
     st.markdown("#### 📊 Summary Statistics")
     
     class_counts = {}
     for res in results_list:
-        pred_class = res['prediction']['predicted_class']
-        class_counts[pred_class] = class_counts.get(pred_class, 0) + 1
+        pred = res['prediction']['predicted_class']
+        class_counts[pred] = class_counts.get(pred, 0) + 1
+    
+    # Check for conflict
+    conflict = False
+    if mode == 'multi_view' and len(class_counts) > 1:
+        conflict = True
+        st.error("""
+        ⚠️ **DIAGNOSTIC CONFLICT DETECTED**
+        
+        Multiple different tumor types were predicted across the views.
+        AI Interpretation has been disabled for safety.
+        
+        **RECOMMENDATION:** Manual review by a radiologist is STRONGLY recommended.
+        """)
     
     # Display summary in columns
     summary_cols = st.columns(len(class_counts))
     for idx, (cls, count) in enumerate(class_counts.items()):
         with summary_cols[idx]:
             st.metric(label=cls.title(), value=count)
-    
-    # Conflict warning for multi-view
-    if mode == 'multi_view' and len(class_counts) > 1:
-        st.warning("""
-        ⚠️ **DIAGNOSTIC CONFLICT DETECTED**
-        
-        Multiple different tumor types were predicted across the views.
-        This indicates potential inconsistency in the analysis.
-        
-        **RECOMMENDATION:** Manual review by a radiologist is STRONGLY recommended.
-        """)
     
     # Individual Results
     st.markdown("---")
@@ -1245,10 +1227,11 @@ def show_batch_results():
             pred = result['prediction']
             
             # Result card
-            col1, col2 = st.columns([1, 2])
+            # Result card
+            col1, col2 = st.columns([1, 1]) # Equal width columns to prevent overlap
             
             with col1:
-                # Show image
+                # Show image - Dynamic sizing
                 if pred.get('original_image'):
                     st.image(pred['original_image'], caption="MRI Scan", use_container_width=True)
             
@@ -1256,7 +1239,7 @@ def show_batch_results():
                 # Show prediction
                 st.markdown(f"""
                 <div style="background: white; color: #1e293b; border-radius: 8px; padding: 1.5rem;">
-                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; 
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: 
                                 color: #64748b; margin-bottom: 0.5rem;">
                         PREDICTION
                     </div>
@@ -1287,52 +1270,56 @@ def show_batch_results():
                 with col_b:
                     st.image(result['gradcam']['overlay'], caption="Grad-CAM", use_container_width=True)
             
-            # Explanation
-            if result.get('explanation'):
+            # Explanation - ONLY SHOW IF NO CONFLICT
+            if not conflict and result.get('explanation'):
                 st.markdown("**AI Interpretation:**")
                 st.info(result['explanation'])
     
-    # Action Buttons
+    # Action Buttons: Simplified for Direct Access
     st.markdown("---")
-    btn_col1, btn_col2, btn_col3 = st.columns(3)
     
-    with btn_col1:
-        if st.button("📄 Export Batch PDF", use_container_width=True):
-            try:
-                pdf_path = generate_batch_pdf_report(results_list, mode, patient_id)
-                with open(pdf_path, 'rb') as pdf_file:
-                    pdf_bytes = pdf_file.read()
-                    st.download_button(
-                        label="⬇️ Download PDF",
-                        data=pdf_bytes,
-                        file_name=f"batch_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
-                st.success("✅ Batch PDF generated successfully!")
-            except Exception as e:
-                st.error(f"❌ Error generating PDF: {str(e)}")
+    # Auto-generate PDF for download
+    try:
+        # Determine global impression / conflict status
+        global_impression = None
+        conflict = False
+        
+        if mode == 'multi_view':
+             if st.session_state.get('orchestrator'):
+                 global_impression = st.session_state.orchestrator.synthesize_patient_report(results_list)
+                 # Check if synthesis returned a conflict dict
+                 if isinstance(global_impression, dict) and global_impression.get('conflict_detected'):
+                     conflict = True
+                     st.error("⚠️ **Diagnostic Conflict Detected**: AI Interpretation has been disabled for this case.")
+        
+        # Prepare PDF
+        # If conflict, global_impression dict will be passed, PDF generator needs to handle it or we pass None
+        pdf_impression = None if conflict else global_impression
+        
+        pdf_path = generate_batch_pdf_report(results_list, mode, patient_id, pdf_impression)
+        
+        # Display Direct Download Button
+        with open(pdf_path, 'rb') as pdf_file:
+            pdf_bytes = pdf_file.read()
+            st.download_button(
+                label="⬇️ Download Clinical Report (PDF)",
+                data=pdf_bytes,
+                file_name=f"report_{patient_id if patient_id else 'case'}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                type="primary"
+            )
+            
+    except Exception as e:
+        st.error(f"❌ Error generating report: {str(e)}")
     
-    with btn_col2:
-        if st.button("📊 View Detailed Report", use_container_width=True):
-            st.session_state.show_batch_detailed = not st.session_state.get('show_batch_detailed', False)
-            st.rerun()
-    
-    with btn_col3:
-        if st.button("🔄 Start New Analysis", type="primary", use_container_width=True):
-            st.session_state.batch_results = None
-            st.session_state.results = None
-            st.session_state.uploaded_images = None
-            st.session_state.show_batch_detailed = False
-            st.session_state.detailed_analysis_generated = False
-            st.session_state.detailed_analysis = None
-            st.rerun()
-    
-    # Show detailed batch report if requested
-    if st.session_state.get('show_batch_detailed', False):
-        show_batch_detailed_report(results_list, mode, patient_id)
+    # Removed "View Detailed Report" and "Start New Analysis" buttons (New analysis can be done by uploading new files or refreshing)
+    if st.button("🔄 Start New Analysis", use_container_width=True):
+         st.session_state.batch_results = None
+         st.session_state.results = None
+         st.rerun()
 
-def generate_batch_pdf_report(results_list, mode, patient_id=None):
+def generate_batch_pdf_report(results_list, mode, patient_id=None, global_impression=None):
     """Generate PDF report for batch analysis"""
     import tempfile
     from utils.pdf_generator import MedicalPDFGenerator
@@ -1344,7 +1331,9 @@ def generate_batch_pdf_report(results_list, mode, patient_id=None):
     
     # Generate PDF
     pdf_gen = MedicalPDFGenerator()
-    pdf_gen.generate_batch_pdf(results_list, pdf_path, mode=mode, patient_id=patient_id)
+    # Map 'multi_view' to 'single_patient' for the backend
+    backend_mode = 'single_patient' if mode == 'multi_view' else 'batch'
+    pdf_gen.generate_batch_pdf(results_list, pdf_path, mode=backend_mode, patient_id=patient_id, global_impression=global_impression)
     
     return pdf_path
 
@@ -1648,8 +1637,10 @@ def main():
     # Route to appropriate page
     if st.session_state.page == 'landing':
         show_landing_page()
-    else:
+    elif st.session_state.page == 'dashboard':
         show_dashboard()
+        
+    # Footer removed
 
 if __name__ == "__main__":
     main()

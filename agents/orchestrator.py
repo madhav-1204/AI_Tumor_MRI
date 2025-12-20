@@ -84,7 +84,8 @@ class Orchestrator:
             prediction_results['predicted_class'],
             prediction_results['confidence'],
             prediction_results['probabilities'],
-            prediction_results['class_names']
+            prediction_results['class_names'],
+            image_path=image_path  # Pass the actual image for Gemini Vision
         )
         print("   ✅ Explanation generated")
         
@@ -110,6 +111,38 @@ class Orchestrator:
     def generate_batch_report(self, results_list, mode='batch', patient_id=None):
         """Delegate batch report generation to report agent"""
         return self.report_agent.generate_batch_report(results_list, mode=mode, patient_id=patient_id)
+
+    def synthesize_patient_report(self, results_list):
+        """
+        Synthesize a holistic patient report from multiple view results.
+        If minimal conflict, calls Reasoning Agent.
+        If significant conflict, SKIPS Reasoning Agent as per strict user rule.
+        """
+        if not results_list:
+            return "No scans to analyze."
+
+        # 1. Check for Diagnostic Conflict
+        class_counts = {}
+        for res in results_list:
+            pred = res['prediction']['predicted_class']
+            class_counts[pred] = class_counts.get(pred, 0) + 1
+            
+        unique_diagnoses = len(class_counts)
+        
+        # STRICT RULE: If conflict exists (more than 1 diagnosis type), DO NOT call Reasoning Agent.
+        if unique_diagnoses > 1:
+            return {
+                "conflict_detected": True,
+                "summary": "Diagnostic Conflict Detected. AI Interpretation Halted.",
+                "explanation": None, 
+                "class_counts": class_counts
+            }
+
+        # 2. If no conflict, proceed with synthesis
+        try:
+            return self.reasoning_agent.synthesize_case(results_list)
+        except Exception as e:
+            return f"Error synthesizing case: {str(e)}"
 
 
 # Test function

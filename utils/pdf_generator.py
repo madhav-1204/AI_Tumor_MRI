@@ -1,278 +1,224 @@
-"""
-PDF Report Generator for Brain Tumor Classification System
-Generates professional medical-style PDF reports with images
-"""
 
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
-from reportlab.lib import colors
-from datetime import datetime
-import io
+from fpdf import FPDF
+import datetime
+import os
 from PIL import Image as PILImage
 import numpy as np
 
+class StructuredMRIReport(FPDF):
+    def header(self):
+        # Professional Header
+        self.set_font('Helvetica', 'B', 16)
+        self.set_text_color(33, 37, 41)
+        self.cell(0, 10, 'NEURORADIOLOGY PEER REVIEW REPORT', 0, 1, 'C')
+        self.set_draw_color(0, 102, 204)
+        self.set_line_width(1)
+        self.line(10, 25, 200, 25)
+        self.ln(15)
+
+    def chapter_title(self, label):
+        self.set_font('Helvetica', 'B', 12)
+        self.set_fill_color(240, 240, 240) # Light gray
+        self.set_text_color(0, 0, 0)
+        self.cell(0, 8, label, 0, 1, 'L', fill=True)
+        self.ln(4)
+
+    def section_content(self, text):
+        self.set_font('Helvetica', '', 11)
+        clean_text = text.replace("**", "").replace("__", "")
+        self.multi_cell(0, 6, clean_text)
+        self.ln(6)
+
+    def footer(self):
+        # Footer with Disclaimer
+        self.set_y(-25)
+        self.set_font('Helvetica', 'I', 8)
+        self.set_text_color(128, 128, 128)
+        self.cell(0, 5, "DISCLAIMER: AI-assisted analysis for research/educational use only. Not a medical device.", 0, 1, 'C')
+        self.cell(0, 5, "Final verification by a qualified radiologist is mandatory.", 0, 0, 'C')
 
 class MedicalPDFGenerator:
-    """Generates medical-style PDF reports"""
-    
-    def __init__(self):
-        self.styles = getSampleStyleSheet()
-        self._create_custom_styles()
-    
-    def _create_custom_styles(self):
-        """Create custom paragraph styles for medical reports"""
+    def generate_batch_pdf(self, results_list, output_path, mode='batch', patient_id='Unknown', global_impression=None):
+        pdf = StructuredMRIReport()
+        pdf.set_auto_page_break(auto=True, margin=25)
         
-        # Title style
-        if 'ReportTitle' not in self.styles:
-            self.styles.add(ParagraphStyle(
-                name='ReportTitle',
-                parent=self.styles['Heading1'],
-                fontSize=18,
-                textColor=colors.HexColor('#1E88E5'),
-                spaceAfter=12,
-                alignment=TA_CENTER,
-                fontName='Helvetica-Bold'
-            ))
+        # Determine Title Context
+        report_context = "Single Patient (Multi-View)" if mode == 'single_patient' else "Batch Analysis"
         
-        # Section header
-        if 'SectionHeader' not in self.styles:
-            self.styles.add(ParagraphStyle(
-                name='SectionHeader',
-                parent=self.styles['Heading2'],
-                fontSize=14,
-                textColor=colors.HexColor('#424242'),
-                spaceAfter=6,
-                spaceBefore=12,
-                fontName='Helvetica-Bold'
-            ))
+        pdf.add_page()
         
-        # Body text
-        if 'BodyText' not in self.styles:
-            self.styles.add(ParagraphStyle(
-                name='BodyText',
-                parent=self.styles['Normal'],
-                fontSize=10,
-                alignment=TA_JUSTIFY,
-                spaceAfter=6
-            ))
+        # 1. Patient & Study Info
+        pdf.set_font('Helvetica', 'B', 11)
+        pdf.cell(100, 7, f"Patient Name/ID: {patient_id}")
+        pdf.cell(0, 7, f"Date: {datetime.datetime.now().strftime('%Y-%m-%d')}", 0, 1, 'R')
+        pdf.cell(100, 7, f"Mode: {report_context}")
+        pdf.ln(10)
+
+        # AI Summary (Aggregated)
+        pdf.chapter_title("AI SUMMARY (AGGREGATED)")
         
-        # Warning style
-        if 'Warning' not in self.styles:
-            self.styles.add(ParagraphStyle(
-                name='Warning',
-                parent=self.styles['Normal'],
-                fontSize=10,
-                textColor=colors.red,
-                spaceAfter=6,
-                spaceBefore=6,
-                fontName='Helvetica-Bold'
-            ))
-    
-    def _pil_to_reportlab_image(self, pil_image, width=3*inch):
-        """Convert PIL Image to ReportLab Image"""
-        img_buffer = io.BytesIO()
-        pil_image.save(img_buffer, format='PNG')
-        img_buffer.seek(0)
-        
-        # Calculate height maintaining aspect ratio
-        aspect = pil_image.height / pil_image.width
-        height = width * aspect
-        
-        return Image(img_buffer, width=width, height=height)
-    
-    def generate_single_scan_pdf(self, result, output_path, patient_id=None):
-        """Generate PDF for a single scan"""
-        
-        doc = SimpleDocTemplate(output_path, pagesize=letter,
-                                rightMargin=0.75*inch, leftMargin=0.75*inch,
-                                topMargin=0.75*inch, bottomMargin=0.75*inch)
-        
-        story = []
-        pred = result['prediction']
-        
-        # Title
-        story.append(Paragraph("BRAIN MRI CLASSIFICATION REPORT", self.styles['ReportTitle']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        # Report metadata
-        metadata_text = f"""
-        <b>Report Generated:</b> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}<br/>
-        <b>Patient ID:</b> {patient_id if patient_id else 'N/A'}<br/>
-        <b>System:</b> AI Brain Tumor Classifier (EfficientNet-B0)
-        """
-        story.append(Paragraph(metadata_text, self.styles['BodyText']))
-        story.append(Spacer(1, 0.3*inch))
-        
-        # Classification Results
-        story.append(Paragraph("CLASSIFICATION RESULTS", self.styles['SectionHeader']))
-        results_text = f"""
-        <b>Primary Finding:</b> {pred['predicted_class'].upper()}<br/>
-        <b>Confidence Score:</b> {pred['confidence']:.2f}%
-        """
-        story.append(Paragraph(results_text, self.styles['BodyText']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        # Probability Distribution Table
-        story.append(Paragraph("Probability Distribution", self.styles['SectionHeader']))
-        prob_data = [['Class', 'Probability']]
-        for cls, prob in zip(pred['class_names'], pred['probabilities']):
-            prob_data.append([cls.upper(), f"{prob*100:.2f}%"])
-        
-        prob_table = Table(prob_data, colWidths=[2.5*inch, 1.5*inch])
-        prob_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E88E5')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        story.append(prob_table)
-        story.append(Spacer(1, 0.3*inch))
-        
-        # Images Section
-        story.append(Paragraph("IMAGING ANALYSIS", self.styles['SectionHeader']))
-        
-        # Create image table (Original | Grad-CAM)
-        img_data = []
-        img_row = []
-        
-        # Original image
-        if pred.get('original_image'):
-            orig_img = self._pil_to_reportlab_image(pred['original_image'], width=2.5*inch)
-            img_row.append(orig_img)
-        
-        # Grad-CAM
-        if result.get('gradcam') and result['gradcam'].get('overlay') is not None:
-            gradcam_pil = PILImage.fromarray(result['gradcam']['overlay'])
-            gradcam_img = self._pil_to_reportlab_image(gradcam_pil, width=2.5*inch)
-            img_row.append(gradcam_img)
-        
-        if img_row:
-            img_data.append(img_row)
-            img_data.append(['Original MRI Scan', 'Grad-CAM Heatmap'])
-            
-            img_table = Table(img_data)
-            img_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 1), (-1, 1), 10),
-            ]))
-            story.append(img_table)
-        
-        story.append(Spacer(1, 0.3*inch))
-        
-        # AI Explanation
-        story.append(Paragraph("INTERPRETATION", self.styles['SectionHeader']))
-        story.append(Paragraph(result.get('explanation', 'No explanation available.'), self.styles['BodyText']))
-        
-        story.append(Spacer(1, 0.3*inch))
-        
-        # Disclaimer
-        story.append(Paragraph("MEDICAL DISCLAIMER", self.styles['SectionHeader']))
-        disclaimer = """
-        This report is generated by an AI system for research and educational purposes only. 
-        It is NOT a medical device and should NOT be used for actual medical diagnosis or treatment decisions. 
-        Always consult qualified healthcare professionals for proper medical evaluation.
-        """
-        story.append(Paragraph(disclaimer, self.styles['Warning']))
-        
-        # Build PDF
-        doc.build(story)
-    
-    def generate_batch_pdf(self, results_list, output_path, mode='batch', patient_id=None):
-        """Generate PDF for batch analysis"""
-        
-        doc = SimpleDocTemplate(output_path, pagesize=letter,
-                                rightMargin=0.75*inch, leftMargin=0.75*inch,
-                                topMargin=0.75*inch, bottomMargin=0.75*inch)
-        
-        story = []
-        
-        # Title
-        if mode == 'single_patient':
-            title = "PATIENT CASE REPORT (MULTI-VIEW ANALYSIS)"
-        else:
-            title = "BATCH ANALYSIS SUMMARY REPORT"
-        
-        story.append(Paragraph(title, self.styles['ReportTitle']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        # Metadata
-        metadata_text = f"""
-        <b>Report Generated:</b> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}<br/>
-        <b>Patient ID:</b> {patient_id if patient_id else 'N/A'}<br/>
-        <b>Total Scans:</b> {len(results_list)}
-        """
-        story.append(Paragraph(metadata_text, self.styles['BodyText']))
-        story.append(Spacer(1, 0.3*inch))
-        
-        # Summary statistics
+        # Calculate stats
         class_counts = {}
         for res in results_list:
-            pred = res['prediction']['predicted_class']
-            class_counts[pred] = class_counts.get(pred, 0) + 1
+            p = res['prediction']['predicted_class']
+            class_counts[p] = class_counts.get(p, 0) + 1
         
-        story.append(Paragraph("SUMMARY OF FINDINGS", self.styles['SectionHeader']))
-        summary_text = "<br/>".join([f"<b>{cls.upper()}:</b> {count}" for cls, count in class_counts.items()])
-        story.append(Paragraph(summary_text, self.styles['BodyText']))
-        
-        # Conflict warning for single patient
-        if mode == 'single_patient' and len(class_counts) > 1:
-            story.append(Spacer(1, 0.2*inch))
-            warning_text = """
-            <b>⚠️ DIAGNOSTIC CONFLICT DETECTED</b><br/>
-            Multiple different tumor types were predicted across the views. 
-            Manual review by a radiologist is STRONGLY recommended.
-            """
-            story.append(Paragraph(warning_text, self.styles['Warning']))
-        
-        story.append(Spacer(1, 0.3*inch))
-        
-        # Individual scan results
-        story.append(Paragraph("DETAILED SCAN RESULTS", self.styles['SectionHeader']))
-        
-        for idx, res in enumerate(results_list):
-            if idx > 0:
-                story.append(PageBreak())
+        summary_txt = f"Total Scans Processed: {len(results_list)}\n"
+        summary_txt += "Tumor Distribution: " + ", ".join([f"{k.upper()}: {v}" for k,v in class_counts.items()])
+        pdf.section_content(summary_txt)
+        pdf.ln(5)
+
+        # Iterate through scans
+        for i, res in enumerate(results_list):
+            if i > 0:
+                pdf.add_page()
+                pdf.ln(5) # Space after header
+                
+            prediction = res['prediction']
+            explanation = res.get('explanation', '')
             
-            pred = res['prediction']
+            # Extract Observations & Impression from explanation if possible
+            # Robust parsing for various formats
+            observations = ""
+            impression = ""
             
-            story.append(Paragraph(f"Scan #{idx+1}: {res['filename']}", self.styles['SectionHeader']))
+            # Try to split by "Clinical Impression" or "Impression"
+            if "Clinical Impression" in explanation:
+                parts = explanation.split("Clinical Impression")
+                # Handle Findings OR Diagnostic Observations header in the first part
+                obs_part = parts[0]
+                obs_part = obs_part.replace("Diagnostic Observations", "").replace("Findings", "").replace(":", "")
+                observations = obs_part.strip()
+                
+                # Cleaning the impression part
+                impression = parts[1].replace(":", "").strip()
+            elif "Impression" in explanation:
+                 parts = explanation.split("Impression")
+                 obs_part = parts[0]
+                 obs_part = obs_part.replace("Diagnostic Observations", "").replace("Findings", "").replace(":", "")
+                 observations = obs_part.strip()
+                 impression = parts[1].replace(":", "").strip()
+            else:
+                observations = explanation # Fallback if no split found
             
-            results_text = f"""
-            <b>Prediction:</b> {pred['predicted_class'].upper()}<br/>
-            <b>Confidence:</b> {pred['confidence']:.2f}%
-            """
-            story.append(Paragraph(results_text, self.styles['BodyText']))
-            story.append(Spacer(1, 0.2*inch))
+            # --- Page Content ---
             
-            # Images
-            img_row = []
-            if pred.get('original_image'):
-                orig_img = self._pil_to_reportlab_image(pred['original_image'], width=2.5*inch)
-                img_row.append(orig_img)
+            # Scan Header with Prediction
+            pdf.set_font('Helvetica', 'B', 14)
+            prediction_text = f"{prediction['predicted_class'].upper()} ({prediction['confidence']:.2f}%)"
+            pdf.cell(0, 10, f"Scan: {res['filename']}  |  AI: {prediction_text}", 0, 1)
+            pdf.ln(2)
+
+            # 2. AI Model Output (REMOVED as requested - integrated into header)
+            # pdf.chapter_title("AI CLASSIFICATION DATA")
+            # pdf.section_content(ai_text)
             
-            if res.get('gradcam') and res['gradcam'].get('overlay') is not None:
-                gradcam_pil = PILImage.fromarray(res['gradcam']['overlay'])
-                gradcam_img = self._pil_to_reportlab_image(gradcam_pil, width=2.5*inch)
-                img_row.append(gradcam_img)
+            # Image Placement (Original & GradCAM)
+            try:
+                # Save temp images for PDF
+                temp_orig = f"temp_orig_{i}.jpg"
+                if prediction.get('original_image'):
+                    prediction['original_image'].save(temp_orig)
+                    
+                    # Layout: Side by side images
+                    y_pos = pdf.get_y()
+                    max_h = 60 # Max height in mm
+                    max_w = 80 # Max width in mm
+                    
+                    # Original Image
+                    # Let FPDF handle aspect ratio by setting one dimension, but we want to fit in box.
+                    # We'll use a fixed width of 80mm unless height exceeds max_h
+                    img_w, img_h = prediction['original_image'].size
+                    aspect = img_h / img_w
+                    
+                    # Calculate dimensions to fit in 80x60 box
+                    display_h = max_w * aspect
+                    display_w = max_w
+                    if display_h > max_h:
+                        display_h = max_h
+                        display_w = max_h / aspect
+                    
+                    pdf.image(temp_orig, x=10, y=y_pos, w=display_w, h=display_h)
+                    
+                    if res.get('gradcam') and res['gradcam'].get('overlay') is not None:
+                        temp_grad = f"temp_grad_{i}.jpg"
+                        grad_pil = PILImage.fromarray(res['gradcam']['overlay'])
+                        grad_pil.save(temp_grad)
+                        
+                        # Use same calculated dims for consistency if images are same size
+                        pdf.image(temp_grad, x=100, y=y_pos, w=display_w, h=display_h)
+                        
+                        # Labels
+                        pdf.set_xy(10, y_pos + display_h + 2)
+                        pdf.set_font('Helvetica', 'I', 9)
+                        pdf.cell(display_w, 5, "Original MRI", 0, 0, 'C')
+                        
+                        pdf.set_xy(100, y_pos + display_h + 2)
+                        pdf.cell(display_w, 5, "Grad-CAM Heatmap", 0, 1, 'C')
+                        
+                        # Cleanup later
+                        if os.path.exists(temp_grad):
+                            os.remove(temp_grad)
+                    else:
+                        # Label for single image
+                        pdf.set_xy(10, y_pos + display_h + 2)
+                        pdf.set_font('Helvetica', 'I', 9)
+                        pdf.cell(display_w, 5, "Original MRI", 0, 0, 'C')
+
+                    if os.path.exists(temp_orig):
+                         os.remove(temp_orig)
+                    
+                    # Ensure we move down past the images before writing text
+                    # Dynamic offset based on actual image height + text space
+                    pdf.set_y(y_pos + display_h + 15) 
+                    
+                else:
+                    pdf.ln(5)
+            except Exception as e:
+                pdf.section_content(f"[Image Embedding Failed: {e}]")
+
+
+            # 3. Findings (was Diagnostic Observations)
+            pdf.chapter_title("FINDINGS") 
             
-            if img_row:
-                img_data = [img_row, ['Original MRI', 'Grad-CAM Heatmap']]
-                img_table = Table(img_data)
-                img_table.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
-                ]))
-                story.append(img_table)
-        
-        # Build PDF
-        doc.build(story)
+            # Clean markdown: Remove **markers** and * bullets
+            clean_obs = observations if observations else "No details provided."
+            clean_obs = clean_obs.replace("**", "").replace("* ", "- ").replace("__", "")
+            
+            pdf.section_content(clean_obs)
+
+            # 4. Clinical Impression
+            if impression:
+                pdf.chapter_title("CLINICAL IMPRESSION")
+                clean_imp = impression.replace("**", "").replace("* ", "- ").replace("__", "")
+                pdf.section_content(clean_imp)
+            
+            pdf.ln(5)
+
+            # 4. Global Impression (Aggregated)
+            # Only show if provided (it will be None if conflict detected)
+            if global_impression:
+                 pdf.chapter_title("FINAL CLINICAL IMPRESSION (CASE SYNTHESIS)")
+                 if hasattr(global_impression, 'text'):
+                     pdf.section_content(global_impression.text)
+                 else:
+                     pdf.section_content(str(global_impression))
+            pdf.ln(5)
+
+        # Technical Specifications (At the end)
+        pdf.add_page()
+        pdf.chapter_title("TECHNICAL SPECIFICATIONS")
+        tech_specs = (
+            "Model Architecture: EfficientNet-B0 / ResNet-18 (PyTorch)\n"
+            "Preprocessing: Resize to 224x224, ImageNet Normalization\n"
+            "Inference Device: CPU\n"
+            "Explainability: Grad-CAM (Gradient-weighted Class Activation Mapping)\n"
+            "AI Assistant: Google Gemini 1.5 Flash (Vision-Enabled)"
+        )
+        pdf.section_content(tech_specs)
+
+        pdf.output(output_path)
+    
+    # Keep legacy methods to avoid import errors if referred elsewhere, mapping to new logic if possible
+    def generate_single_scan_pdf(self, result, output_path, patient_id=None):
+        self.generate_batch_pdf([result], output_path, mode='single_patient', patient_id=patient_id)
