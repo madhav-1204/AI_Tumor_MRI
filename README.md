@@ -34,8 +34,8 @@ This AI system is not FDA-approved and should never be used for actual medical d
 
 ### Prerequisites
 
-- Python 3.10 or higher
-- Anaconda/Miniconda (recommended)
+- Python 3.11+ (recommended) or 3.10+
+- Anaconda/Miniconda (recommended) OR Python standalone
 - 4GB+ RAM
 - Internet connection (for model download)
 
@@ -50,19 +50,26 @@ cd AI_Tumor
 
 #### Step 2: Create Virtual Environment
 
-**Using Conda (Recommended):**
+**Option A: Using Conda (Recommended):**
 ```bash
-conda create -n ai_tumor python=3.10 -y
-conda activate ai_tumor
+# Create environment with Python 3.11
+conda create -n ai_tumor_311 python=3.11 -y
+
+# Activate environment
+conda activate ai_tumor_311
 ```
 
-**Using venv:**
+**Option B: Using Python venv:**
 ```bash
-python -m venv ai_tumor_env
+# Create virtual environment
+python -m venv venv
+
+# Activate environment
 # Windows:
-ai_tumor_env\Scripts\activate
+venv\Scripts\activate
+
 # Linux/Mac:
-source ai_tumor_env/bin/activate
+source venv/bin/activate
 ```
 
 #### Step 3: Install Dependencies
@@ -70,6 +77,8 @@ source ai_tumor_env/bin/activate
 ```bash
 pip install -r requirements.txt
 ```
+
+**Note:** Installation downloads ~150MB of packages including PyTorch, Streamlit, and ML libraries. This may take 2-5 minutes depending on your internet speed.
 
 This will install:
 - PyTorch & torchvision
