@@ -3,7 +3,8 @@ Configuration file for Brain Tumor Classification System
 """
 
 # Model Configuration
-MODEL_ARCHITECTURE = "efficientnet_b0"
+MODEL_PATH = "models/brain_tumor_resnet18.pth"  # Trained ResNet-18 for brain tumor classification
+MODEL_ARCHITECTURE = "resnet18"
 NUM_CLASSES = 4
 MODEL_TYPE = "pytorch"
 
@@ -31,7 +32,6 @@ Key Limitations:
 - May produce incorrect or misleading results
 - Should never replace professional medical consultation
 - Developed as a proof-of-concept only
-- Uses ImageNet pretrained weights (not trained on medical images)
 
 ALWAYS consult qualified healthcare professionals for medical advice, 
 diagnosis, or treatment. Never rely solely on AI predictions for health 
