@@ -29,6 +29,9 @@ This AI system is not FDA-approved and should never be used for actual medical d
 - **Explainable AI**: Grad-CAM heatmaps showing decision factors
 - **Interactive Web Interface**: Built with Streamlit
 - **Professional Reports**: Clinical-style diagnostic reports
+- **📄 PDF Export**: Generate comprehensive PDF reports with images and analysis
+- **📊 Detailed Technical Reports**: In-depth statistical analysis, uncertainty metrics, and clinical context
+- **🔬 Advanced Analytics**: Shannon entropy, confidence intervals, and probability distributions
 
 ## 🚀 Quick Start
 
@@ -188,6 +191,32 @@ User Input (MRI Image)
 3. Upload MRI image (JPG/PNG)
 4. Click "Analyze Image"
 5. View results, heatmaps, and reports
+
+#### New Features:
+
+**📄 PDF Export**
+- Click "Export PDF Report" button after analysis
+- Downloads comprehensive PDF with:
+  - Classification results and confidence scores
+  - Original MRI scan and Grad-CAM heatmap
+  - Probability distribution tables
+  - AI-generated interpretation
+  - Medical disclaimer
+
+**📊 Detailed Technical Report**
+- Click "View Detailed Report" to expand comprehensive analysis
+- Includes:
+  - **Technical Analysis**: Model architecture, parameters, preprocessing details
+  - **Statistical Analysis**: Entropy, uncertainty metrics, confidence intervals
+  - **AI Reasoning**: Clinical context and key findings with confidence indicators
+  - **Medical Context**: Detailed information about each classification category
+  - **Full Report**: Complete technical report in text format
+
+**Key Metrics Explained:**
+- **Confidence**: Probability of predicted class (%)
+- **Uncertainty**: Shannon entropy-based prediction uncertainty
+- **Entropy**: Information theory measure of prediction spread
+- **Confidence Intervals**: Estimated margin of error (±5% baseline)
 
 ### Python API
 

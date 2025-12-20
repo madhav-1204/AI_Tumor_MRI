@@ -9,10 +9,17 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import *
 
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
     GEMINI_AVAILABLE = True
 except ImportError:
-    GEMINI_AVAILABLE = False
+    try:
+        import google.generativeai as genai
+        GEMINI_AVAILABLE = True
+        LEGACY_API = True
+    except ImportError:
+        GEMINI_AVAILABLE = False
+        LEGACY_API = False
 
 
 class ReasoningAgent:
@@ -24,11 +31,16 @@ class ReasoningAgent:
     def __init__(self, api_key=None):
         self.api_key = api_key or os.getenv('GEMINI_API_KEY')
         self.model = None
+        self.client = None
         
         if self.api_key and GEMINI_AVAILABLE:
             try:
-                genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel(GEMINI_MODEL)
+                if 'LEGACY_API' in globals() and LEGACY_API:
+                    genai.configure(api_key=self.api_key)
+                    self.model = genai.GenerativeModel(GEMINI_MODEL)
+                else:
+                    self.client = genai.Client(api_key=self.api_key)
+                    self.model = GEMINI_MODEL
                 print("✅ Gemini API initialized")
             except Exception as e:
                 print(f"⚠️  Could not initialize Gemini: {e}")
@@ -79,8 +91,17 @@ Please provide a brief, simple explanation (2-3 sentences) about:
 
 Keep it simple and easy to understand for non-medical users. Include the medical disclaimer."""
 
-            response = self.model.generate_content(prompt)
-            return response.text
+            if self.client:
+                # New API
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    contents=prompt
+                )
+                return response.text
+            else:
+                # Legacy API
+                response = self.model.generate_content(prompt)
+                return response.text
             
         except Exception as e:
             print(f"⚠️  LLM generation failed: {e}")
