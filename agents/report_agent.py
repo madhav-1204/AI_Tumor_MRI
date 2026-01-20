@@ -156,8 +156,9 @@ DETAILED VIEW-BY-VIEW FINDINGS
             # Add compact view summaries
             for i, res in enumerate(results_list):
                 pred = res['prediction']
+                filename = res.get('filename', f'Scan_{i+1}')
                 report += f"""
-View #{i+1}: {res['filename']}
+View #{i+1}: {filename}
   Prediction: {pred['predicted_class'].upper()}
   Confidence: {pred['confidence']:.1f}%
   Probabilities: {', '.join([f"{cls}: {prob*100:.1f}%" for cls, prob in zip(pred['class_names'], pred['probabilities'])])}
@@ -182,7 +183,8 @@ INDIVIDUAL SCAN RESULTS
 ======================="""
         
             for i, res in enumerate(results_list):
-                report += f"\n\nScan #{i+1} : {res['filename']}"
+                filename = res.get('filename', f'Scan_{i+1}')
+                report += f"\n\nScan #{i+1} : {filename}"
                 report += "\n" + "-" * 40
                 report += self.generate_report(res['prediction'], res['explanation'])
                 report += "\n" + "="*40

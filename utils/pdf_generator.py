@@ -1,4 +1,3 @@
-
 from fpdf import FPDF
 import datetime
 import os
@@ -106,7 +105,11 @@ class MedicalPDFGenerator:
             # Scan Header with Prediction
             pdf.set_font('Helvetica', 'B', 14)
             prediction_text = f"{prediction['predicted_class'].upper()} ({prediction['confidence']:.2f}%)"
-            pdf.cell(0, 10, f"Scan: {res['filename']}  |  AI: {prediction_text}", 0, 1)
+            # Get filename safely with fallback
+            filename = res.get('filename', f'Scan_{i+1}')
+            # Clean filename for PDF (remove special characters that might cause issues)
+            filename = filename.encode('latin-1', 'replace').decode('latin-1')
+            pdf.cell(0, 10, f"Scan: {filename}  |  AI: {prediction_text}", 0, 1)
             pdf.ln(2)
 
             # 2. AI Model Output (REMOVED as requested - integrated into header)
